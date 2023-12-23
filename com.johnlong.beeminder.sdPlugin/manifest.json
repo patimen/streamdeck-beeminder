@@ -1,0 +1,47 @@
+{
+	"Name": "Beeminder",
+	"Version": "0.1.0",
+	"Author": "JohnLong",
+	"Actions": [
+		{
+			"Name": "Beeminder Monitor",
+			"UUID": "com.johnlong.beeminder.monitor",
+			"Icon": "imgs/actions/monitor/icon",
+			"Tooltip": "Displays beeminder goal progress",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/actions/monitor/action",
+					"TitleAlignment": "middle"
+				}
+			],
+			"PropertyInspectorPath": "propertyinspector/index.html"
+		}
+	],
+	"Category": "Status Deck",
+	"CategoryIcon": "imgs/plugin/statusboard",
+	"CodePath": "bin/plugin.js",
+	"Description": "Monitor Beeminder goals on your StreamDeck",
+	"Icon": "imgs/plugin/marketplace",
+	"SDKVersion": 2,
+	"Software": {
+		"MinimumVersion": "6.4"
+	},
+	"OS": [
+		{
+			"Platform": "mac",
+			"MinimumVersion": "10.15"
+		},
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Nodejs": {
+		"Version": "20",
+		"Debug": "enabled"
+	},
+	"UUID": "com.johnlong.beeminder"
+}
