@@ -4,7 +4,8 @@ import streamDeck, {
     DidReceiveSettingsEvent,
     KeyDownEvent,
     SingletonAction,
-    WillAppearEvent
+    WillAppearEvent,
+    WillDisappearEvent
 } from "@elgato/streamdeck";
 import fetch from 'node-fetch';
 
@@ -41,20 +42,29 @@ export class BeeminderMonitor extends SingletonAction<GoalSettings> {
 
     /**
      * The {@link SingletonAction.onWillAppear} event is useful for setting the visual representation of an action when it become visible. This could be due to the Stream Deck first
-     * starting up, or the user navigating between pages / folders etc.. There is also an inverse of this event in the form of {@link streamDeck.client.onWillDisappear}. In this example,
+     * starting up, or the user navigating between pages / folders etc.. There is also an inverse of this event in the form of {@link streamDeck.onWillDisappear}. In this example,
      * we're setting the title to the "count" that is incremented in {@link BeeminderMonitor.onKeyDown}.
      */
+    private intervals: Map<string, NodeJS.Timeout> = new Map<string, NodeJS.Timeout>();
+
     onWillAppear(ev: WillAppearEvent<GoalSettings>): void | Promise<void> {
         // Call updateButton every 60 seconds:
-        setInterval(() => {
-            this.logger.debug("Timer fired")
-            this.updateButton(ev.payload.settings.slug, ev.action);
-        }, 60000);
-        return ev.action.getSettings().then((settings) => {
-            if (settings.slug) {
-                return this.updateButton(settings.slug, ev.action);
-            }
-        });
+        if (!this.intervals.has(ev.action.id)) {
+            this.intervals.set(ev.action.id, setInterval(() => {
+                this.logger.debug("Timer fired")
+                ev.action.getSettings()
+            }, 60000));
+        }
+        if (ev.payload.settings.slug) {
+            return ev.action.getSettings();
+        }
+    }
+
+    onWillDisappear(ev: WillDisappearEvent<GoalSettings>): Promise<void> | void {
+        if (this.intervals.has(ev.action.id)) {
+            clearInterval(this.intervals.get(ev.action.id) as NodeJS.Timeout);
+            this.intervals.delete(ev.action.id);
+        }
     }
 
     /**
@@ -64,13 +74,12 @@ export class BeeminderMonitor extends SingletonAction<GoalSettings> {
      * settings using `setSettings` and `getSettings`.
      */
     async onKeyDown(ev: KeyDownEvent<GoalSettings>): Promise<void> {
-        return this.updateButton(ev.payload.settings.slug, ev.action);
+        return ev.action.getSettings();
     }
 
-    async updateButton(slug: string, action: Action<GoalSettings>): Promise<void> {
+    async updateButton(settings: GoalSettings, action: Action<GoalSettings>): Promise<void> {
         const globalSettings = await streamDeck.settings.getGlobalSettings() as BeeminderSettings;
-        const goalData = await this.getGoalData(globalSettings.apiToken, slug);
-        const settings = await action.getSettings()
+        const goalData = await this.getGoalData(globalSettings.apiToken, settings.slug);
         let svg = this.getButtonSvg(goalData, settings.progressBarCutoff || 99);
         return action.setImage("data:image/svg+xml;charset=utf8," + svg);
     }
@@ -88,7 +97,7 @@ export class BeeminderMonitor extends SingletonAction<GoalSettings> {
     <rect width="144" height="144" fill="${goalData.roadstatuscolor}" />
     <text x="72" y="40" dominant-baseline="middle" text-anchor="middle" fill="#000" font-size="${getFontSize(limsumLine1, 140, 30)}px" font-family="Tahoma">${limsumLine1}</text>
     <text x="72" y="82" dominant-baseline="middle" text-anchor="middle" fill="#000" font-size="${getFontSize(limsumLine2, 140, 40)}px" font-family="Tahoma">${limsumLine2}</text>` +
-    this.getProgressBar(goalData, progressBarCutoff) +
+            this.getProgressBar(goalData, progressBarCutoff) +
             `<text x="72" y="135" dominant-baseline="middle" text-anchor="middle" fill="#000" font-size="${getFontSize(goalData.slug, 140, 28)}px" font-family="Tahoma">${goalData.slug}</text>
     </svg>`;
     }
@@ -117,8 +126,7 @@ export class BeeminderMonitor extends SingletonAction<GoalSettings> {
         const periodInDays = this.getDaysInPeriod(goalData.graphsum.split(' ').pop());
         const todayGoal = Math.ceil(goalData.currate / periodInDays);
         const progressPercent = totalToday / todayGoal;
-        const progressWidth = Math.round(barWidth * progressPercent);
-        return progressWidth;
+        return Math.round(barWidth * progressPercent);
     }
 
     async getGoalData(apiToken: string, goalSlug: string): Promise<GoalData> {
@@ -134,7 +142,7 @@ export class BeeminderMonitor extends SingletonAction<GoalSettings> {
     }
 
     onDidReceiveSettings(ev: DidReceiveSettingsEvent<GoalSettings>): Promise<void> | void {
-        return this.updateButton(ev.payload.settings.slug, ev.action)
+        return this.updateButton(ev.payload.settings, ev.action)
     }
 
     private getDaysInPeriod(pop: string | undefined): number {
