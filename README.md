@@ -7,8 +7,8 @@ A plugin for visualizing the status of [Beeminder](https://www.beeminder.com) go
 ### Description
 The plugin uses a single button to display the status of a Beeminder goal.
 - The background color matches the current status of the goal
-- At the top is the needed values to get to the next color
-- The deadline for that is displayed below
+- At the top is the needed values to avoid derail
+- The deadline for derail displayed below
 - The bottom is the slug for the goal
 - The white bar in between displays the current day progress towards the goal, regardless of color. Thus, if you have a goal that requires 10,000 steps a day, and you have done 7,500, the bar will be 75% background color and 25% white.
 
